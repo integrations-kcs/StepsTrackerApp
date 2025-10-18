@@ -164,25 +164,18 @@ export default function RegistrationScreen() {
         device_model: deviceInfo.model,
       });
 
-      Alert.alert(
-        'Registration Successful',
-        'Your account has been created successfully!',
-        [
-          {
-            text: 'OK',
-            onPress: () => router.replace('/(tabs)'),
-          },
-        ]
-      );
+      setIsSubmitting(false);
+
+      router.replace('/(tabs)');
     } catch (error) {
       console.error('Registration error:', error);
+      setIsSubmitting(false);
+
       Alert.alert(
         'Registration Failed',
         'An error occurred during registration. Please try again.',
         [{ text: 'OK' }]
       );
-    } finally {
-      setIsSubmitting(false);
     }
   };
 

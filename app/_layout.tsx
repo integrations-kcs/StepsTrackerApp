@@ -27,7 +27,13 @@ export default function RootLayout() {
         router.replace('/registration');
       }
     }
-  }, [isLoading, isRegistered, segments]);
+  }, [isLoading, isRegistered]);
+
+  useEffect(() => {
+    if (!isLoading && segments[0] === '(tabs)') {
+      checkAuth();
+    }
+  }, [segments]);
 
   async function checkAuth() {
     try {
