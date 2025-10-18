@@ -127,7 +127,9 @@ export default function RegistrationScreen() {
             style={styles.input}
             placeholder="Enter your employee ID"
             placeholderTextColor="#999"
+            maxLength={7}
           />
+          <Text style={styles.noteText}>Format: Starts with 'K' followed by 6 digits (e.g., K123456)</Text>
         </View>
 
         <View style={styles.inputGroup}>
@@ -269,6 +271,12 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: '#1a1a1a',
     marginBottom: 8,
+  },
+  noteText: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 6,
+    fontStyle: 'italic',
   },
   input: {
     backgroundColor: '#fff',
