@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Modal, Platform } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Modal, Platform, Alert } from 'react-native';
 import { Users, ChevronDown } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { useState, useEffect } from 'react';
@@ -6,6 +6,7 @@ import * as Device from 'expo-device';
 import * as Application from 'expo-application';
 import Constants from 'expo-constants';
 import { getDeviceId } from '@/lib/auth';
+import { checkExistingDeviceRegistration, checkExistingEmployeeId, insertNewEmployee } from '@/lib/database';
 
 const COMPANIES = ['Batam', 'Tuas', 'Zhoushan'];
 
@@ -13,6 +14,14 @@ export default function RegistrationScreen() {
   const router = useRouter();
   const [selectedCompany, setSelectedCompany] = useState<string>('');
   const [showCompanyPicker, setShowCompanyPicker] = useState(false);
+  const [employeeId, setEmployeeId] = useState<string>('');
+  const [profileName, setProfileName] = useState<string>('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errors, setErrors] = useState({
+    employeeId: '',
+    profileName: '',
+    company: '',
+  });
   const [deviceInfo, setDeviceInfo] = useState({
     deviceId: 'Loading...',
     os: 'Loading...',
@@ -86,8 +95,95 @@ export default function RegistrationScreen() {
     }
   }
 
-  const handleRegistration = () => {
-    router.replace('/(tabs)');
+  const validateForm = (): boolean => {
+    const newErrors = {
+      employeeId: '',
+      profileName: '',
+      company: '',
+    };
+
+    if (!employeeId.trim()) {
+      newErrors.employeeId = 'Employee ID is required';
+    } else if (!/^K\d{6}$/.test(employeeId.trim())) {
+      newErrors.employeeId = 'Employee ID must start with K followed by 6 digits';
+    }
+
+    if (!profileName.trim()) {
+      newErrors.profileName = 'Profile name is required';
+    }
+
+    if (!selectedCompany) {
+      newErrors.company = 'Company is required';
+    }
+
+    setErrors(newErrors);
+    return !newErrors.employeeId && !newErrors.profileName && !newErrors.company;
+  };
+
+  const handleRegistration = async () => {
+    if (!validateForm()) {
+      return;
+    }
+
+    if (deviceInfo.deviceId === 'Loading...' || deviceInfo.deviceId === 'Unknown') {
+      Alert.alert('Error', 'Device ID is not available. Please try again.');
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const existingDevice = await checkExistingDeviceRegistration(deviceInfo.deviceId);
+      if (existingDevice) {
+        Alert.alert(
+          'Device Already Registered',
+          `This device is already registered to employee ${existingDevice.employee_id} (${existingDevice.profile_name}).`,
+          [{ text: 'OK' }]
+        );
+        setIsSubmitting(false);
+        return;
+      }
+
+      const existingEmployee = await checkExistingEmployeeId(employeeId.trim());
+      if (existingEmployee) {
+        Alert.alert(
+          'Employee ID Already Exists',
+          'This Employee ID is already registered. Please use a different Employee ID.',
+          [{ text: 'OK' }]
+        );
+        setIsSubmitting(false);
+        return;
+      }
+
+      await insertNewEmployee({
+        employee_id: employeeId.trim(),
+        device_id: deviceInfo.deviceId,
+        profile_name: profileName.trim(),
+        company: selectedCompany,
+        device_os: deviceInfo.os,
+        device_model: deviceInfo.model,
+      });
+
+      Alert.alert(
+        'Registration Successful',
+        'Your account has been created successfully!',
+        [
+          {
+            text: 'OK',
+            onPress: () => router.replace('/(tabs)'),
+          },
+        ]
+      );
+    } catch (error) {
+      console.error('Registration error:', error);
+      Alert.alert(
+        'Registration Failed',
+        'An error occurred during registration. Please try again.',
+        [{ text: 'OK' }]
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -124,27 +220,49 @@ export default function RegistrationScreen() {
         <View style={styles.inputGroup}>
           <Text style={styles.inputLabel}>Employee ID *</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, errors.employeeId && styles.inputError]}
             placeholder="Enter your employee ID"
             placeholderTextColor="#999"
             maxLength={7}
+            value={employeeId}
+            onChangeText={(text) => {
+              setEmployeeId(text.toUpperCase());
+              if (errors.employeeId) {
+                setErrors({ ...errors, employeeId: '' });
+              }
+            }}
+            autoCapitalize="characters"
           />
-          <Text style={styles.noteText}>Format: Starts with 'K' followed by 6 digits (e.g., K123456)</Text>
+          {errors.employeeId ? (
+            <Text style={styles.errorText}>{errors.employeeId}</Text>
+          ) : (
+            <Text style={styles.noteText}>Format: Starts with 'K' followed by 6 digits (e.g., K123456)</Text>
+          )}
         </View>
 
         <View style={styles.inputGroup}>
           <Text style={styles.inputLabel}>Profile Name *</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, errors.profileName && styles.inputError]}
             placeholder="Enter your full name"
             placeholderTextColor="#999"
+            value={profileName}
+            onChangeText={(text) => {
+              setProfileName(text);
+              if (errors.profileName) {
+                setErrors({ ...errors, profileName: '' });
+              }
+            }}
           />
+          {errors.profileName && (
+            <Text style={styles.errorText}>{errors.profileName}</Text>
+          )}
         </View>
 
         <View style={styles.inputGroup}>
           <Text style={styles.inputLabel}>Company *</Text>
           <TouchableOpacity
-            style={styles.pickerContainer}
+            style={[styles.pickerContainer, errors.company && styles.inputError]}
             onPress={() => setShowCompanyPicker(true)}
           >
             <Text style={[styles.pickerText, selectedCompany && styles.pickerTextSelected]}>
@@ -152,11 +270,20 @@ export default function RegistrationScreen() {
             </Text>
             <ChevronDown size={20} color="#666" strokeWidth={2} />
           </TouchableOpacity>
+          {errors.company && (
+            <Text style={styles.errorText}>{errors.company}</Text>
+          )}
         </View>
       </View>
 
-      <TouchableOpacity style={styles.button} onPress={handleRegistration}>
-        <Text style={styles.buttonText}>Register</Text>
+      <TouchableOpacity
+        style={[styles.button, isSubmitting && styles.buttonDisabled]}
+        onPress={handleRegistration}
+        disabled={isSubmitting}
+      >
+        <Text style={styles.buttonText}>
+          {isSubmitting ? 'Registering...' : 'Register'}
+        </Text>
       </TouchableOpacity>
 
       <Modal
@@ -184,6 +311,9 @@ export default function RegistrationScreen() {
                 onPress={() => {
                   setSelectedCompany(company);
                   setShowCompanyPicker(false);
+                  if (errors.company) {
+                    setErrors({ ...errors, company: '' });
+                  }
                 }}
               >
                 <Text style={[
@@ -287,6 +417,14 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#e0e0e0',
   },
+  inputError: {
+    borderColor: '#dc2626',
+  },
+  errorText: {
+    fontSize: 12,
+    color: '#dc2626',
+    marginTop: 6,
+  },
   pickerContainer: {
     backgroundColor: '#fff',
     borderRadius: 8,
@@ -348,6 +486,10 @@ const styles = StyleSheet.create({
     padding: 18,
     alignItems: 'center',
     marginBottom: 40,
+  },
+  buttonDisabled: {
+    backgroundColor: '#9ca3af',
+    opacity: 0.7,
   },
   buttonText: {
     color: '#fff',
