@@ -3,12 +3,10 @@ import { ChevronRight } from 'lucide-react-native';
 import { useState, useEffect } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import { useCallback } from 'react';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getDeviceId } from '@/lib/auth';
 import { fetchEmployeeByDeviceId, User } from '@/lib/database';
 
 export default function SettingsScreen() {
-  const insets = useSafeAreaInsets();
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -61,7 +59,7 @@ export default function SettingsScreen() {
 
   return (
     <ScrollView style={styles.container}>
-      <View style={[styles.header, { paddingTop: Math.max(insets.top, 20) + 40 }]}>
+      <View style={styles.header}>
         <Text style={styles.headerTitle}>Settings</Text>
       </View>
 

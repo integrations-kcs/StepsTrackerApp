@@ -1,9 +1,7 @@
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { TrendingUp, Award, Users } from 'lucide-react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function DashboardScreen() {
-  const insets = useSafeAreaInsets();
   const leaderboardData = [
     { rank: 1, name: 'Sarah Johnson', steps: '142,890 steps', amount: '$714.45', color: '#FFD700' },
     { rank: 2, name: 'Michael Chen', steps: '136,245 steps', amount: '$691.23', color: '#C0C0C0' },
@@ -14,7 +12,7 @@ export default function DashboardScreen() {
 
   return (
     <ScrollView style={styles.container}>
-      <View style={[styles.header, { paddingTop: Math.max(insets.top, 20) + 40 }]}>
+      <View style={styles.header}>
         <Text style={styles.headerTitle}>Dashboard</Text>
         <Award size={24} color="#FFD700" strokeWidth={2} />
       </View>

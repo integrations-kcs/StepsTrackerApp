@@ -1,14 +1,11 @@
 import { View, Text, StyleSheet, ScrollView, RefreshControl, TouchableOpacity, Alert } from 'react-native';
 import { useState, useEffect } from 'react';
 import { TrendingUp, Award, Flame, Star, RefreshCw } from 'lucide-react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { syncStepsToDatabase, fetchUserStepRecords, DailyStepRecord } from '@/lib/stepSyncService';
 import { requestStepPermissions, checkStepPermissions } from '@/lib/healthPermissions';
-import { getDeviceId, getEmployeeIdFromDevice } from '@/lib/auth';
 
 export default function IndividualScreen() {
-  const insets = useSafeAreaInsets();
   const [refreshing, setRefreshing] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [stepRecords, setStepRecords] = useState<DailyStepRecord[]>([]);
@@ -29,15 +26,11 @@ export default function IndividualScreen() {
 
   async function loadEmployeeData() {
     try {
-      const deviceId = await getDeviceId();
-      const empId = await getEmployeeIdFromDevice(deviceId);
-
-      if (empId) {
-        setEmployeeId(empId);
-        const records = await fetchUserStepRecords(empId, 7);
+      const storedEmployeeId = await AsyncStorage.getItem('employee_id');
+      if (storedEmployeeId) {
+        setEmployeeId(storedEmployeeId);
+        const records = await fetchUserStepRecords(storedEmployeeId, 7);
         setStepRecords(records);
-      } else {
-        console.error('No employee ID found for this device');
       }
     } catch (error) {
       console.error('Failed to load employee data:', error);
@@ -137,7 +130,7 @@ export default function IndividualScreen() {
         <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
       }
     >
-      <View style={[styles.header, { paddingTop: Math.max(insets.top, 20) + 40 }]}>
+      <View style={styles.header}>
         <Text style={styles.headerTitle}>My Progress</Text>
         <TouchableOpacity
           style={styles.syncButton}

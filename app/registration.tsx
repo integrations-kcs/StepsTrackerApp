@@ -2,7 +2,6 @@ import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Modal,
 import { Users, ChevronDown } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { useState, useEffect } from 'react';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Device from 'expo-device';
 import * as Application from 'expo-application';
 import Constants from 'expo-constants';
@@ -13,7 +12,6 @@ const COMPANIES = ['Batam', 'Tuas', 'Zhoushan'];
 
 export default function RegistrationScreen() {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
   const [selectedCompany, setSelectedCompany] = useState<string>('');
   const [showCompanyPicker, setShowCompanyPicker] = useState(false);
   const [employeeId, setEmployeeId] = useState<string>('');
@@ -182,16 +180,7 @@ export default function RegistrationScreen() {
   };
 
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={[
-        styles.contentContainer,
-        {
-          paddingTop: Math.max(insets.top, 20) + 40,
-          paddingBottom: Math.max(insets.bottom, 24) + 24
-        }
-      ]}
-    >
+    <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
       <View style={styles.iconContainer}>
         <View style={styles.iconCircle}>
           <Users size={48} color="#ffffff" strokeWidth={2} />
@@ -301,7 +290,7 @@ export default function RegistrationScreen() {
           activeOpacity={1}
           onPress={() => setShowCompanyPicker(false)}
         >
-          <View style={[styles.modalContent, { paddingBottom: Math.max(insets.bottom, 20) + 20 }]}>
+          <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Select Company</Text>
             </View>
