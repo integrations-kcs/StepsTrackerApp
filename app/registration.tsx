@@ -1,22 +1,32 @@
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Modal, Platform } from 'react-native';
-import { Users, ChevronDown } from 'lucide-react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Modal, Platform, ActivityIndicator } from 'react-native';
+import { Users, ChevronDown, AlertCircle } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { useState, useEffect } from 'react';
 import * as Device from 'expo-device';
 import * as Application from 'expo-application';
 import Constants from 'expo-constants';
 import { getDeviceId } from '@/lib/auth';
+import { insertNewEmployee, validateEmployeeId } from '@/lib/database';
 
 const COMPANIES = ['Batam', 'Tuas', 'Zhoushan'];
 
 export default function RegistrationScreen() {
   const router = useRouter();
+  const [employeeId, setEmployeeId] = useState<string>('');
+  const [profileName, setProfileName] = useState<string>('');
   const [selectedCompany, setSelectedCompany] = useState<string>('');
   const [showCompanyPicker, setShowCompanyPicker] = useState(false);
   const [deviceInfo, setDeviceInfo] = useState({
     deviceId: 'Loading...',
     os: 'Loading...',
     model: 'Loading...',
+  });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [validationErrors, setValidationErrors] = useState({
+    employeeId: '',
+    profileName: '',
+    company: '',
   });
 
   useEffect(() => {
@@ -86,9 +96,76 @@ export default function RegistrationScreen() {
     }
   }
 
-  const handleRegistration = () => {
-    router.replace('/(tabs)');
-  };
+  function validateForm(): boolean {
+    const errors = {
+      employeeId: '',
+      profileName: '',
+      company: '',
+    };
+
+    if (!employeeId.trim()) {
+      errors.employeeId = 'Employee ID is required';
+    } else if (!validateEmployeeId(employeeId)) {
+      errors.employeeId = 'Invalid format. Must start with K and be 7 characters (e.g., K123456)';
+    }
+
+    if (!profileName.trim()) {
+      errors.profileName = 'Profile name is required';
+    } else if (profileName.trim().length < 2) {
+      errors.profileName = 'Profile name must be at least 2 characters';
+    }
+
+    if (!selectedCompany) {
+      errors.company = 'Please select a company';
+    }
+
+    setValidationErrors(errors);
+    return !errors.employeeId && !errors.profileName && !errors.company;
+  }
+
+  async function handleRegistration() {
+    setError(null);
+
+    if (!validateForm()) {
+      return;
+    }
+
+    if (deviceInfo.deviceId === 'Loading...' || deviceInfo.deviceId === 'Unknown') {
+      setError('Unable to get device information. Please try again.');
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      await insertNewEmployee({
+        employee_id: employeeId.toUpperCase(),
+        device_id: deviceInfo.deviceId,
+        profile_name: profileName.trim(),
+        company: selectedCompany,
+        device_os: deviceInfo.os,
+        device_model: deviceInfo.model,
+      });
+
+      router.replace('/(tabs)');
+    } catch (err: any) {
+      console.error('Registration error:', err);
+
+      if (err.message?.includes('duplicate key value violates unique constraint')) {
+        if (err.message.includes('employee_id')) {
+          setError('This Employee ID is already registered. Please contact support if this is your ID.');
+        } else if (err.message.includes('device_id')) {
+          setError('This device is already registered. Please contact support to reset your registration.');
+        } else {
+          setError('This information is already registered. Please check your details.');
+        }
+      } else {
+        setError('Registration failed. Please check your connection and try again.');
+      }
+    } finally {
+      setLoading(false);
+    }
+  }
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
@@ -100,6 +177,13 @@ export default function RegistrationScreen() {
 
       <Text style={styles.title}>Welcome!</Text>
       <Text style={styles.subtitle}>Register to start tracking your steps</Text>
+
+      {error && (
+        <View style={styles.errorBanner}>
+          <AlertCircle size={20} color="#d32f2f" strokeWidth={2} />
+          <Text style={styles.errorBannerText}>{error}</Text>
+        </View>
+      )}
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Device Information</Text>
@@ -124,39 +208,74 @@ export default function RegistrationScreen() {
         <View style={styles.inputGroup}>
           <Text style={styles.inputLabel}>Employee ID *</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, validationErrors.employeeId && styles.inputError]}
             placeholder="Enter your employee ID"
             placeholderTextColor="#999"
             maxLength={7}
+            value={employeeId}
+            onChangeText={(text) => {
+              setEmployeeId(text.toUpperCase());
+              if (validationErrors.employeeId) {
+                setValidationErrors({ ...validationErrors, employeeId: '' });
+              }
+            }}
+            autoCapitalize="characters"
+            editable={!loading}
           />
           <Text style={styles.noteText}>Format: Starts with 'K' followed by 6 digits (e.g., K123456)</Text>
+          {validationErrors.employeeId && (
+            <Text style={styles.errorText}>{validationErrors.employeeId}</Text>
+          )}
         </View>
 
         <View style={styles.inputGroup}>
           <Text style={styles.inputLabel}>Profile Name *</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, validationErrors.profileName && styles.inputError]}
             placeholder="Enter your full name"
             placeholderTextColor="#999"
+            value={profileName}
+            onChangeText={(text) => {
+              setProfileName(text);
+              if (validationErrors.profileName) {
+                setValidationErrors({ ...validationErrors, profileName: '' });
+              }
+            }}
+            editable={!loading}
           />
+          {validationErrors.profileName && (
+            <Text style={styles.errorText}>{validationErrors.profileName}</Text>
+          )}
         </View>
 
         <View style={styles.inputGroup}>
           <Text style={styles.inputLabel}>Company *</Text>
           <TouchableOpacity
-            style={styles.pickerContainer}
-            onPress={() => setShowCompanyPicker(true)}
+            style={[styles.pickerContainer, validationErrors.company && styles.inputError]}
+            onPress={() => !loading && setShowCompanyPicker(true)}
+            disabled={loading}
           >
             <Text style={[styles.pickerText, selectedCompany && styles.pickerTextSelected]}>
               {selectedCompany || 'Select your company'}
             </Text>
             <ChevronDown size={20} color="#666" strokeWidth={2} />
           </TouchableOpacity>
+          {validationErrors.company && (
+            <Text style={styles.errorText}>{validationErrors.company}</Text>
+          )}
         </View>
       </View>
 
-      <TouchableOpacity style={styles.button} onPress={handleRegistration}>
-        <Text style={styles.buttonText}>Complete Registration</Text>
+      <TouchableOpacity
+        style={[styles.button, loading && styles.buttonDisabled]}
+        onPress={handleRegistration}
+        disabled={loading}
+      >
+        {loading ? (
+          <ActivityIndicator size="small" color="#ffffff" />
+        ) : (
+          <Text style={styles.buttonText}>Complete Registration</Text>
+        )}
       </TouchableOpacity>
 
       <Modal
@@ -184,6 +303,9 @@ export default function RegistrationScreen() {
                 onPress={() => {
                   setSelectedCompany(company);
                   setShowCompanyPicker(false);
+                  if (validationErrors.company) {
+                    setValidationErrors({ ...validationErrors, company: '' });
+                  }
                 }}
               >
                 <Text style={[
@@ -235,6 +357,20 @@ const styles = StyleSheet.create({
     color: '#666',
     marginBottom: 32,
   },
+  errorBanner: {
+    backgroundColor: '#ffebee',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 24,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  errorBannerText: {
+    fontSize: 14,
+    color: '#d32f2f',
+    flex: 1,
+  },
   section: {
     backgroundColor: '#fff',
     borderRadius: 12,
@@ -278,6 +414,11 @@ const styles = StyleSheet.create({
     marginTop: 6,
     fontStyle: 'italic',
   },
+  errorText: {
+    fontSize: 12,
+    color: '#d32f2f',
+    marginTop: 4,
+  },
   input: {
     backgroundColor: '#fff',
     borderRadius: 8,
@@ -286,6 +427,10 @@ const styles = StyleSheet.create({
     color: '#1a1a1a',
     borderWidth: 1,
     borderColor: '#e0e0e0',
+  },
+  inputError: {
+    borderColor: '#d32f2f',
+    borderWidth: 1.5,
   },
   pickerContainer: {
     backgroundColor: '#fff',
@@ -348,6 +493,9 @@ const styles = StyleSheet.create({
     padding: 18,
     alignItems: 'center',
     marginBottom: 40,
+  },
+  buttonDisabled: {
+    backgroundColor: '#9fb8e3',
   },
   buttonText: {
     color: '#fff',
