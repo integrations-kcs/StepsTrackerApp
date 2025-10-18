@@ -47,3 +47,23 @@ export async function checkUserRegistration(deviceId: string): Promise<boolean> 
     return false;
   }
 }
+
+export async function getEmployeeIdFromDevice(deviceId: string): Promise<string | null> {
+  try {
+    const { data, error } = await supabase
+      .from('users')
+      .select('employee_id')
+      .eq('device_id', deviceId)
+      .maybeSingle();
+
+    if (error) {
+      console.error('Error fetching employee ID:', error);
+      return null;
+    }
+
+    return data?.employee_id || null;
+  } catch (error) {
+    console.error('Error fetching employee ID:', error);
+    return null;
+  }
+}

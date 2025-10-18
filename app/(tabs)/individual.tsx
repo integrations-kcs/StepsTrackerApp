@@ -4,6 +4,7 @@ import { TrendingUp, Award, Flame, Star, RefreshCw } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { syncStepsToDatabase, fetchUserStepRecords, DailyStepRecord } from '@/lib/stepSyncService';
 import { requestStepPermissions, checkStepPermissions } from '@/lib/healthPermissions';
+import { getDeviceId, getEmployeeIdFromDevice } from '@/lib/auth';
 
 export default function IndividualScreen() {
   const [refreshing, setRefreshing] = useState(false);
@@ -26,11 +27,15 @@ export default function IndividualScreen() {
 
   async function loadEmployeeData() {
     try {
-      const storedEmployeeId = await AsyncStorage.getItem('employee_id');
-      if (storedEmployeeId) {
-        setEmployeeId(storedEmployeeId);
-        const records = await fetchUserStepRecords(storedEmployeeId, 7);
+      const deviceId = await getDeviceId();
+      const empId = await getEmployeeIdFromDevice(deviceId);
+
+      if (empId) {
+        setEmployeeId(empId);
+        const records = await fetchUserStepRecords(empId, 7);
         setStepRecords(records);
+      } else {
+        console.error('No employee ID found for this device');
       }
     } catch (error) {
       console.error('Failed to load employee data:', error);
