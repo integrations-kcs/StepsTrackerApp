@@ -156,7 +156,7 @@ export default function RegistrationScreen() {
       </View>
 
       <TouchableOpacity style={styles.button} onPress={handleRegistration}>
-        <Text style={styles.buttonText}>Complete Registration</Text>
+        <Text style={styles.buttonText}>Register</Text>
       </TouchableOpacity>
 
       <Modal
