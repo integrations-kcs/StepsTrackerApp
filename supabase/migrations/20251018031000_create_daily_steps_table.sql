@@ -14,8 +14,8 @@
     - `step_count` (integer) - Number of steps recorded
     - `goal_achieved` (boolean) - Whether daily goal was met
     - `base_charity_amount` (numeric) - Charity amount ($15 if goal achieved)
-    - `created_at` (timestamptz) - Record creation timestamp
-    - `updated_at` (timestamptz) - Record update timestamp
+    - `created_at` (timestamptz) - UTC timestamp with timezone
+    - `updated_at` (timestamptz) - UTC timestamp with timezone
 
   ## Indexes
   - Index on employee_id for faster lookups
@@ -43,8 +43,8 @@ CREATE TABLE IF NOT EXISTS daily_steps (
   step_count integer NOT NULL DEFAULT 0,
   goal_achieved boolean NOT NULL DEFAULT false,
   base_charity_amount numeric(10, 2) NOT NULL DEFAULT 0.00,
-  created_at timestamptz DEFAULT now(),
-  updated_at timestamptz DEFAULT now(),
+  created_at timestamptz NOT NULL DEFAULT (now() AT TIME ZONE 'UTC'),
+  updated_at timestamptz NOT NULL DEFAULT (now() AT TIME ZONE 'UTC'),
   CONSTRAINT fk_employee
     FOREIGN KEY (employee_id)
     REFERENCES users(employee_id)
@@ -98,7 +98,7 @@ CREATE POLICY "Anyone can update step records"
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$
 BEGIN
-  NEW.updated_at = now();
+  NEW.updated_at = now() AT TIME ZONE 'UTC';
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
