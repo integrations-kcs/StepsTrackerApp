@@ -1,7 +1,62 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { ChevronRight } from 'lucide-react-native';
+import { useState, useEffect } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
+import { useCallback } from 'react';
+import { getDeviceId } from '@/lib/auth';
+import { fetchEmployeeByDeviceId, User } from '@/lib/database';
 
 export default function SettingsScreen() {
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const loadUserProfile = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      const deviceId = await getDeviceId();
+      const userData = await fetchEmployeeByDeviceId(deviceId);
+      setUser(userData);
+    } catch (err) {
+      console.error('Error loading user profile:', err);
+      setError('Failed to load profile data');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useFocusEffect(
+    useCallback(() => {
+      loadUserProfile();
+    }, [])
+  );
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    });
+  };
+
+  if (isLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#4285F4" />
+      </View>
+    );
+  }
+
+  if (error || !user) {
+    return (
+      <View style={styles.errorContainer}>
+        <Text style={styles.errorText}>{error || 'No user data found'}</Text>
+      </View>
+    );
+  }
+
   return (
     <ScrollView style={styles.container}>
       <View style={styles.header}>
@@ -14,21 +69,21 @@ export default function SettingsScreen() {
         <View style={styles.infoCard}>
           <View style={styles.infoRow}>
             <Text style={styles.label}>Profile Name</Text>
-            <Text style={styles.value}>Alex Thompson</Text>
+            <Text style={styles.value}>{user.profile_name}</Text>
           </View>
 
           <View style={styles.divider} />
 
           <View style={styles.infoRow}>
             <Text style={styles.label}>Employee ID</Text>
-            <Text style={styles.value}>EMP-2024-0847</Text>
+            <Text style={styles.value}>{user.employee_id}</Text>
           </View>
 
           <View style={styles.divider} />
 
           <View style={styles.infoRow}>
             <Text style={styles.label}>Company</Text>
-            <Text style={styles.value}>TechCorp Industries</Text>
+            <Text style={styles.value}>{user.company}</Text>
           </View>
 
           <View style={styles.divider} />
@@ -36,11 +91,13 @@ export default function SettingsScreen() {
           <View style={styles.statusRow}>
             <View>
               <Text style={styles.label}>Status</Text>
-              <Text style={styles.statusActive}>Active</Text>
+              <Text style={user.status === 'Active' ? styles.statusActive : styles.statusInactive}>
+                {user.status}
+              </Text>
             </View>
             <View style={styles.registeredInfo}>
               <Text style={styles.label}>Registered</Text>
-              <Text style={styles.value}>Jan 15, 2024</Text>
+              <Text style={styles.value}>{formatDate(user.registration_date)}</Text>
             </View>
           </View>
         </View>
@@ -52,21 +109,21 @@ export default function SettingsScreen() {
         <View style={styles.infoCard}>
           <View style={styles.infoRow}>
             <Text style={styles.label}>Device ID</Text>
-            <Text style={styles.value}>iOS-9A8B7C6D5E4F</Text>
+            <Text style={styles.value}>{user.device_id}</Text>
           </View>
 
           <View style={styles.divider} />
 
           <View style={styles.infoRow}>
             <Text style={styles.label}>Device OS</Text>
-            <Text style={styles.value}>iOS 17.2</Text>
+            <Text style={styles.value}>{user.device_os || 'Unknown'}</Text>
           </View>
 
           <View style={styles.divider} />
 
           <View style={styles.infoRow}>
             <Text style={styles.label}>Device Model</Text>
-            <Text style={styles.value}>iPhone 14 Pro</Text>
+            <Text style={styles.value}>{user.device_model || 'Unknown'}</Text>
           </View>
         </View>
       </View>
@@ -104,6 +161,24 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f5f5f5',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f5f5f5',
+    padding: 20,
+  },
+  errorText: {
+    fontSize: 15,
+    color: '#dc2626',
+    textAlign: 'center',
   },
   header: {
     padding: 20,
@@ -154,6 +229,11 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     color: '#10B981',
+  },
+  statusInactive: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#dc2626',
   },
   divider: {
     height: 1,
