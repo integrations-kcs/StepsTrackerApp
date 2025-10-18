@@ -1,15 +1,7 @@
 import { useState, useRef } from 'react';
-import { View, Dimensions, StyleSheet, Pressable, Text, Platform } from 'react-native';
+import { View, Dimensions, StyleSheet, Pressable, Text, Platform, PanResponder, Animated } from 'react-native';
 import { BarChart3, User, Settings } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { GestureDetector, Gesture } from 'react-native-gesture-handler';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
-  runOnJS,
-  interpolate,
-} from 'react-native-reanimated';
 import DashboardScreen from './index';
 import IndividualScreen from './individual';
 import SettingsScreen from './settings';
@@ -25,60 +17,65 @@ const tabs = [
 export default function TabLayout() {
   const insets = useSafeAreaInsets();
   const [activeIndex, setActiveIndex] = useState(0);
-  const translateX = useSharedValue(0);
-  const contextX = useSharedValue(0);
+  const translateX = useRef(new Animated.Value(0)).current;
+  const panStartX = useRef(0);
 
-  const updateActiveIndex = (newIndex: number) => {
-    setActiveIndex(newIndex);
-  };
+  const panResponder = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        return Math.abs(gestureState.dx) > 10;
+      },
+      onPanResponderGrant: () => {
+        panStartX.current = -activeIndex * SCREEN_WIDTH;
+      },
+      onPanResponderMove: (_, gestureState) => {
+        const newTranslateX = panStartX.current + gestureState.dx;
+        const minTranslate = -(tabs.length - 1) * SCREEN_WIDTH;
+        const maxTranslate = 0;
+        const clampedTranslate = Math.max(minTranslate, Math.min(maxTranslate, newTranslateX));
+        translateX.setValue(clampedTranslate);
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        const threshold = SCREEN_WIDTH * 0.3;
+        let targetIndex = activeIndex;
 
-  const gesture = Gesture.Pan()
-    .onStart(() => {
-      contextX.value = translateX.value;
+        if (gestureState.dx < -threshold && activeIndex < tabs.length - 1) {
+          targetIndex = activeIndex + 1;
+        } else if (gestureState.dx > threshold && activeIndex > 0) {
+          targetIndex = activeIndex - 1;
+        }
+
+        animateToTab(targetIndex);
+      },
     })
-    .onUpdate((event) => {
-      const newTranslateX = contextX.value + event.translationX;
-      const minTranslate = -(tabs.length - 1) * SCREEN_WIDTH;
-      const maxTranslate = 0;
-      translateX.value = Math.max(minTranslate, Math.min(maxTranslate, newTranslateX));
-    })
-    .onEnd((event) => {
-      const threshold = SCREEN_WIDTH * 0.3;
-      let targetIndex = activeIndex;
+  ).current;
 
-      if (event.translationX < -threshold && activeIndex < tabs.length - 1) {
-        targetIndex = activeIndex + 1;
-      } else if (event.translationX > threshold && activeIndex > 0) {
-        targetIndex = activeIndex - 1;
-      }
-
-      translateX.value = withSpring(-targetIndex * SCREEN_WIDTH, {
-        damping: 20,
-        stiffness: 90,
-      });
-
-      if (targetIndex !== activeIndex) {
-        runOnJS(updateActiveIndex)(targetIndex);
-      }
-    });
-
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: translateX.value }],
-  }));
-
-  const handleTabPress = (index: number) => {
+  const animateToTab = (index: number) => {
     setActiveIndex(index);
-    translateX.value = withSpring(-index * SCREEN_WIDTH, {
+    Animated.spring(translateX, {
+      toValue: -index * SCREEN_WIDTH,
+      useNativeDriver: true,
       damping: 20,
       stiffness: 90,
-    });
+    }).start();
+  };
+
+  const handleTabPress = (index: number) => {
+    animateToTab(index);
   };
 
   return (
     <View style={styles.container}>
-      <GestureDetector gesture={gesture}>
-        <Animated.View style={[styles.screensContainer, animatedStyle]}>
-          {tabs.map((tab, index) => {
+      <View style={styles.screensWrapper} {...panResponder.panHandlers}>
+        <Animated.View
+          style={[
+            styles.screensContainer,
+            {
+              transform: [{ translateX }],
+            },
+          ]}
+        >
+          {tabs.map((tab) => {
             const TabComponent = tab.component;
             return (
               <View key={tab.key} style={[styles.screen, { width: SCREEN_WIDTH }]}>
@@ -87,7 +84,7 @@ export default function TabLayout() {
             );
           })}
         </Animated.View>
-      </GestureDetector>
+      </View>
 
       <View
         style={[
@@ -133,6 +130,10 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#fff',
+  },
+  screensWrapper: {
+    flex: 1,
+    overflow: 'hidden',
   },
   screensContainer: {
     flex: 1,
