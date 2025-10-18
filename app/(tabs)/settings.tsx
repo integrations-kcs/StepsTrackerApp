@@ -151,7 +151,7 @@ export default function SettingsScreen() {
 
       <View style={styles.versionSection}>
         <Text style={styles.versionLabel}>App Version</Text>
-        <Text style={styles.versionText}>v1.2.4 (Build 2024.101)</Text>
+        <Text style={styles.versionText}>v1.0001 (Build 2025.0001)</Text>
       </View>
     </ScrollView>
   );
