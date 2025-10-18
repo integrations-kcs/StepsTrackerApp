@@ -1,9 +1,9 @@
 import { View, Text, StyleSheet, ScrollView, RefreshControl, TouchableOpacity, Alert } from 'react-native';
 import { useState, useEffect } from 'react';
 import { TrendingUp, Award, Flame, Star, RefreshCw } from 'lucide-react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { syncStepsToDatabase, fetchUserStepRecords, DailyStepRecord } from '@/lib/stepSyncService';
 import { requestStepPermissions, checkStepPermissions } from '@/lib/healthPermissions';
+import { getEmployeeIdFromDevice } from '@/lib/auth';
 
 export default function IndividualScreen() {
   const [refreshing, setRefreshing] = useState(false);
@@ -26,10 +26,10 @@ export default function IndividualScreen() {
 
   async function loadEmployeeData() {
     try {
-      const storedEmployeeId = await AsyncStorage.getItem('employee_id');
-      if (storedEmployeeId) {
-        setEmployeeId(storedEmployeeId);
-        const records = await fetchUserStepRecords(storedEmployeeId, 7);
+      const fetchedEmployeeId = await getEmployeeIdFromDevice();
+      if (fetchedEmployeeId) {
+        setEmployeeId(fetchedEmployeeId);
+        const records = await fetchUserStepRecords(fetchedEmployeeId, 7);
         setStepRecords(records);
       }
     } catch (error) {
@@ -46,12 +46,7 @@ export default function IndividualScreen() {
     if (!employeeId) return;
 
     try {
-      const lastSync = await AsyncStorage.getItem('last_step_sync');
-      const now = new Date().getTime();
-
-      if (!lastSync || now - parseInt(lastSync) > 3600000) {
-        await handleStepSync();
-      }
+      await handleStepSync();
     } catch (error) {
       console.error('Auto sync failed:', error);
     }
@@ -82,7 +77,6 @@ export default function IndividualScreen() {
         const records = await fetchUserStepRecords(employeeId, 7);
         setStepRecords(records);
 
-        await AsyncStorage.setItem('last_step_sync', new Date().getTime().toString());
         setLastSyncTime(new Date().toLocaleTimeString());
       } else {
         Alert.alert('Sync Failed', result.error || 'Failed to sync step data');
