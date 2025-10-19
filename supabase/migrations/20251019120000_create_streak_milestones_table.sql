@@ -59,11 +59,13 @@ CREATE POLICY "Anyone can view streak milestones"
 
 -- Insert default milestone data
 INSERT INTO streak_milestones (milestone_days, bonus_amount, description) VALUES
-  (7, 10.00, '1 Week Streak'),
-  (14, 25.00, '2 Week Streak'),
-  (30, 50.00, '1 Month Streak'),
-  (60, 100.00, '2 Month Streak'),
-  (90, 150.00, '3 Month Streak'),
-  (180, 300.00, '6 Month Streak'),
-  (365, 500.00, '1 Year Streak')
+  (3, 10.00, '3 Day Streak'),
+  (7, 30.00, '7 Day Streak'),
+  (10, 40.00, '10 Day Streak'),
+  (14, 60.00, '14 Day Streak'),
+  (17, 70.00, '17 Day Streak'),
+  (21, 100.00, '21 Day Streak'),
+  (24, 110.00, '24 Day Streak'),
+  (28, 130.00, '28 Day Streak'),
+  (31, 150.00, '31 Day Streak');  
 ON CONFLICT (milestone_days) DO NOTHING;
