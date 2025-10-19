@@ -69,53 +69,28 @@ export async function syncStepsToDatabase(employeeId: string): Promise<SyncResul
 
     for (const dayData of stepDataResult.data) {
       try {
-        const { data: existingRecord, error: fetchError } = await supabase
-          .from('daily_steps')
-          .select('*')
-          .eq('employee_id', employeeId)
-          .eq('step_date', dayData.date)
-          .maybeSingle();
-
-        if (fetchError && fetchError.code !== 'PGRST116') {
-          console.error(`Error checking existing record for ${dayData.date}:`, fetchError);
-          continue;
-        }
-
         const goalAchieved = dayData.stepCount >= settings.stepGoal;
         const charityAmount = goalAchieved ? settings.charityAmount : 0;
 
-        if (existingRecord) {
-          const { error: updateError } = await supabase
-            .from('daily_steps')
-            .update({
-              step_count: dayData.stepCount,
-              goal_achieved: goalAchieved,
-              base_charity_amount: charityAmount,
-              device_id: deviceId
-            })
-            .eq('employee_id', employeeId)
-            .eq('step_date', dayData.date);
+        const { data, error: upsertError } = await supabase
+          .from('daily_steps')
+          .upsert({
+            employee_id: employeeId,
+            device_id: deviceId,
+            step_date: dayData.date,
+            step_count: dayData.stepCount,
+            goal_achieved: goalAchieved,
+            base_charity_amount: charityAmount
+          }, {
+            onConflict: 'employee_id,step_date',
+            ignoreDuplicates: false
+          })
+          .select();
 
-          if (updateError) {
-            console.error(`Error updating record for ${dayData.date}:`, updateError);
-          } else {
-            recordsUpdated++;
-          }
+        if (upsertError) {
+          console.error(`Error upserting record for ${dayData.date}:`, upsertError);
         } else {
-          const { error: insertError } = await supabase
-            .from('daily_steps')
-            .insert({
-              employee_id: employeeId,
-              device_id: deviceId,
-              step_date: dayData.date,
-              step_count: dayData.stepCount,
-              goal_achieved: goalAchieved,
-              base_charity_amount: charityAmount
-            });
-
-          if (insertError) {
-            console.error(`Error inserting record for ${dayData.date}:`, insertError);
-          } else {
+          if (data && data.length > 0) {
             recordsInserted++;
           }
         }
