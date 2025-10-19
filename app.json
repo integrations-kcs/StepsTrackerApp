@@ -18,10 +18,10 @@
       "bundleIdentifier": "com.stepstracker.app"
     },
     "android": {
-      "adaptiveIcon": {
-        "foregroundImage": "./assets/images/icon.png",
-        "backgroundColor": "#4285F4"
-      },
+     // "adaptiveIcon": {
+     //   "foregroundImage": "./assets/images/icon.png",
+     //   "backgroundColor": "#4285F4"
+     //  },
       "package": "com.stepstracker.app",
       "versionCode": 1
     },
