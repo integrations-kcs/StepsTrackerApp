@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import { fetchLast7DaysSteps, DailyStepData } from './stepDataService';
+import { updateUserStreak, StreakUpdateResult } from './streakService';
 import * as Device from 'expo-device';
 
 export interface DailyStepRecord {
@@ -19,6 +20,8 @@ export interface SyncResult {
   recordsProcessed: number;
   recordsInserted: number;
   recordsUpdated: number;
+  streakUpdated?: boolean;
+  streakResult?: StreakUpdateResult;
   error?: string;
 }
 
@@ -66,8 +69,13 @@ export async function syncStepsToDatabase(employeeId: string): Promise<SyncResul
 
     let recordsInserted = 0;
     let recordsUpdated = 0;
+    let latestGoalAchievedDate: string | null = null;
 
-    for (const dayData of stepDataResult.data) {
+    const sortedData = [...stepDataResult.data].sort((a, b) =>
+      new Date(b.date).getTime() - new Date(a.date).getTime()
+    );
+
+    for (const dayData of sortedData) {
       try {
         const goalAchieved = dayData.stepCount >= settings.stepGoal;
         const charityAmount = goalAchieved ? settings.charityAmount : 0;
@@ -93,9 +101,29 @@ export async function syncStepsToDatabase(employeeId: string): Promise<SyncResul
           if (data && data.length > 0) {
             recordsInserted++;
           }
+
+          if (goalAchieved && !latestGoalAchievedDate) {
+            latestGoalAchievedDate = dayData.date;
+          }
         }
       } catch (dayError) {
         console.error(`Failed to process ${dayData.date}:`, dayError);
+      }
+    }
+
+    let streakResult: StreakUpdateResult | undefined;
+    let streakUpdated = false;
+
+    if (latestGoalAchievedDate) {
+      try {
+        streakResult = await updateUserStreak(employeeId, latestGoalAchievedDate);
+        streakUpdated = streakResult.success;
+
+        if (streakResult.success && streakResult.newAchievements && streakResult.newAchievements.length > 0) {
+          console.log(`🎉 New achievements unlocked: ${streakResult.newAchievements.map(a => `${a.milestone_days} days`).join(', ')}`);
+        }
+      } catch (streakError) {
+        console.error('Failed to update streak:', streakError);
       }
     }
 
@@ -103,7 +131,9 @@ export async function syncStepsToDatabase(employeeId: string): Promise<SyncResul
       success: true,
       recordsProcessed: stepDataResult.data.length,
       recordsInserted,
-      recordsUpdated
+      recordsUpdated,
+      streakUpdated,
+      streakResult
     };
   } catch (error) {
     return {

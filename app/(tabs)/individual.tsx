@@ -1,9 +1,10 @@
 import { View, Text, StyleSheet, ScrollView, RefreshControl, TouchableOpacity, Alert } from 'react-native';
 import { useState, useEffect } from 'react';
-import { TrendingUp, Award, Flame, Star, RefreshCw } from 'lucide-react-native';
+import { TrendingUp, Award, Flame, Star, RefreshCw, Trophy } from 'lucide-react-native';
 import { syncStepsToDatabase, fetchUserStepRecords, DailyStepRecord } from '@/lib/stepSyncService';
 import { requestStepPermissions, checkStepPermissions } from '@/lib/healthPermissions';
 import { getEmployeeIdFromDevice } from '@/lib/auth';
+import { getUserStreak, getUserAchievements, getAllMilestones, Streak, StreakAchievement, StreakMilestone } from '@/lib/streakService';
 
 export default function IndividualScreen() {
   const [refreshing, setRefreshing] = useState(false);
@@ -12,6 +13,9 @@ export default function IndividualScreen() {
   const [employeeId, setEmployeeId] = useState<string | null>(null);
   const [lastSyncTime, setLastSyncTime] = useState<string | null>(null);
   const [hasPermission, setHasPermission] = useState(false);
+  const [streak, setStreak] = useState<Streak | null>(null);
+  const [achievements, setAchievements] = useState<StreakAchievement[]>([]);
+  const [allMilestones, setAllMilestones] = useState<StreakMilestone[]>([]);
 
   useEffect(() => {
     loadEmployeeData();
@@ -31,9 +35,26 @@ export default function IndividualScreen() {
         setEmployeeId(fetchedEmployeeId);
         const records = await fetchUserStepRecords(fetchedEmployeeId, 7);
         setStepRecords(records);
+        await loadStreakData(fetchedEmployeeId);
       }
     } catch (error) {
       console.error('Failed to load employee data:', error);
+    }
+  }
+
+  async function loadStreakData(userId: string) {
+    try {
+      const [streakData, achievementsData, milestonesData] = await Promise.all([
+        getUserStreak(userId),
+        getUserAchievements(userId),
+        getAllMilestones()
+      ]);
+
+      setStreak(streakData);
+      setAchievements(achievementsData);
+      setAllMilestones(milestonesData);
+    } catch (error) {
+      console.error('Failed to load streak data:', error);
     }
   }
 
@@ -76,6 +97,7 @@ export default function IndividualScreen() {
       if (result.success) {
         const records = await fetchUserStepRecords(employeeId, 7);
         setStepRecords(records);
+        await loadStreakData(employeeId);
 
         setLastSyncTime(new Date().toLocaleTimeString());
       } else {
@@ -172,6 +194,61 @@ export default function IndividualScreen() {
           <Text style={styles.progressPercent}>{Math.round(progressPercent)}%</Text>
         </View>
       </View>
+
+      <View style={styles.streakSection}>
+        <View style={styles.streakCard}>
+          <View style={styles.streakHeader}>
+            <Flame size={24} color="#FF6B35" strokeWidth={2} />
+            <Text style={styles.streakTitle}>Current Streak</Text>
+          </View>
+          <Text style={styles.streakValue}>{streak?.current_streak || 0} days</Text>
+          {streak && streak.longest_streak > 0 && (
+            <View style={styles.longestStreakRow}>
+              <Trophy size={16} color="#FFD700" strokeWidth={2} />
+              <Text style={styles.longestStreakText}>Longest: {streak.longest_streak} days</Text>
+            </View>
+          )}
+        </View>
+      </View>
+
+      {allMilestones.length > 0 && (
+        <View style={styles.achievementsSection}>
+          <Text style={styles.achievementsTitle}>Streak Achievements</Text>
+          <View style={styles.achievementsGrid}>
+            {allMilestones.map((milestone) => {
+              const isUnlocked = achievements.some(a => a.milestone_days === milestone.milestone_days);
+              return (
+                <View
+                  key={milestone.milestone_id}
+                  style={[
+                    styles.achievementBadge,
+                    isUnlocked ? styles.achievementUnlocked : styles.achievementLocked
+                  ]}
+                >
+                  <Award
+                    size={20}
+                    color={isUnlocked ? '#FFD700' : '#ccc'}
+                    fill={isUnlocked ? '#FFD700' : 'transparent'}
+                    strokeWidth={2}
+                  />
+                  <Text style={[
+                    styles.achievementDays,
+                    isUnlocked ? styles.achievementDaysUnlocked : styles.achievementDaysLocked
+                  ]}>
+                    {milestone.milestone_days}
+                  </Text>
+                  <Text style={[
+                    styles.achievementLabel,
+                    isUnlocked ? styles.achievementLabelUnlocked : styles.achievementLabelLocked
+                  ]}>
+                    days
+                  </Text>
+                </View>
+              );
+            })}
+          </View>
+        </View>
+      )}
 
       <View style={styles.statsRow}>
         <View style={styles.statMiniCard}>
@@ -330,6 +407,101 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 13,
     fontWeight: '600',
+  },
+  streakSection: {
+    paddingHorizontal: 20,
+    marginBottom: 20,
+  },
+  streakCard: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 20,
+    borderWidth: 2,
+    borderColor: '#FF6B35',
+  },
+  streakHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 12,
+  },
+  streakTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1a1a1a',
+  },
+  streakValue: {
+    fontSize: 36,
+    fontWeight: '700',
+    color: '#FF6B35',
+    marginBottom: 8,
+  },
+  longestStreakRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  longestStreakText: {
+    fontSize: 13,
+    color: '#666',
+    fontWeight: '500',
+  },
+  achievementsSection: {
+    marginHorizontal: 20,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 20,
+    marginBottom: 20,
+  },
+  achievementsTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1a1a1a',
+    marginBottom: 16,
+  },
+  achievementsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  achievementBadge: {
+    width: 70,
+    height: 80,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 8,
+  },
+  achievementUnlocked: {
+    backgroundColor: '#FFF9E6',
+    borderWidth: 2,
+    borderColor: '#FFD700',
+  },
+  achievementLocked: {
+    backgroundColor: '#f5f5f5',
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+  },
+  achievementDays: {
+    fontSize: 18,
+    fontWeight: '700',
+    marginTop: 4,
+  },
+  achievementDaysUnlocked: {
+    color: '#1a1a1a',
+  },
+  achievementDaysLocked: {
+    color: '#999',
+  },
+  achievementLabel: {
+    fontSize: 10,
+    fontWeight: '500',
+  },
+  achievementLabelUnlocked: {
+    color: '#666',
+  },
+  achievementLabelLocked: {
+    color: '#999',
   },
   statsRow: {
     flexDirection: 'row',
