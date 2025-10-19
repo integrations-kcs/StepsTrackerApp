@@ -1,6 +1,7 @@
 import { supabase } from './supabase';
 import { fetchLast7DaysSteps, DailyStepData } from './stepDataService';
 import { updateUserStreak, StreakUpdateResult } from './streakService';
+import { refreshDashboardViews } from './dashboardService';
 import * as Device from 'expo-device';
 
 export interface DailyStepRecord {
@@ -125,6 +126,12 @@ export async function syncStepsToDatabase(employeeId: string): Promise<SyncResul
       } catch (streakError) {
         console.error('Failed to update streak:', streakError);
       }
+    }
+
+    try {
+      await refreshDashboardViews();
+    } catch (refreshError) {
+      console.warn('Dashboard views refresh failed:', refreshError);
     }
 
     return {
