@@ -4,7 +4,6 @@
     "slug": "steps-tracker-app",
     "version": "1.2.4",
     "orientation": "portrait",
-    // "icon": "./assets/images/icon.png",
     "scheme": "myapp",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
@@ -18,10 +17,6 @@
       "bundleIdentifier": "com.stepstracker.app"
     },
     "android": {
-     // "adaptiveIcon": {
-     //   "foregroundImage": "./assets/images/icon.png",
-     //   "backgroundColor": "#4285F4"
-     //  },
       "package": "com.stepstracker.app",
       "versionCode": 1
     },
