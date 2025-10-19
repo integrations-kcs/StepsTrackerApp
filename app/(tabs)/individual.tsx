@@ -28,6 +28,16 @@ export default function IndividualScreen() {
     }
   }, [employeeId, hasPermission]);
 
+  useEffect(() => {
+    if (!employeeId || !hasPermission) return;
+
+    const intervalId = setInterval(() => {
+      refreshData();
+    }, 30000);
+
+    return () => clearInterval(intervalId);
+  }, [employeeId, hasPermission]);
+
   async function loadEmployeeData() {
     try {
       const fetchedEmployeeId = await getEmployeeIdFromDevice();
@@ -70,6 +80,18 @@ export default function IndividualScreen() {
       await handleStepSync();
     } catch (error) {
       console.error('Auto sync failed:', error);
+    }
+  }
+
+  async function refreshData() {
+    if (!employeeId) return;
+
+    try {
+      const records = await fetchUserStepRecords(employeeId, 7);
+      setStepRecords(records);
+      await loadStreakData(employeeId);
+    } catch (error) {
+      console.error('Auto refresh failed:', error);
     }
   }
 
