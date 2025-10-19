@@ -118,7 +118,9 @@ export default function IndividualScreen() {
 
   function formatDate(dateString: string): string {
     const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = date.toLocaleDateString('en-US', { month: 'short' });
+    return `${day} ${month}`;
   }
 
   function formatSteps(steps: number): string {
@@ -276,10 +278,17 @@ export default function IndividualScreen() {
                 return (
                   <View key={record.step_record_id || index} style={styles.barContainer}>
                     <View style={styles.barColumn}>
-                      {record.goal_achieved && (
-                        <Star size={16} color="#FFD700" fill="#FFD700" strokeWidth={2} />
-                      )}
-                      {!record.goal_achieved && <View style={{ height: 16 }} />}
+                      <View style={[
+                        styles.starCircle,
+                        record.goal_achieved ? styles.starCircleActive : styles.starCircleInactive
+                      ]}>
+                        <Star
+                          size={14}
+                          color={record.goal_achieved ? "#FFD700" : "#ccc"}
+                          fill={record.goal_achieved ? "#FFD700" : "transparent"}
+                          strokeWidth={2}
+                        />
+                      </View>
                       <View style={styles.barWrapper}>
                         <View style={[styles.bar, { height: `${heightPercent}%` }]} />
                       </View>
@@ -556,6 +565,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'flex-end',
     width: '100%',
+  },
+  starCircle: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 4,
+  },
+  starCircleActive: {
+    borderColor: '#FFD700',
+    backgroundColor: '#FFF9E6',
+  },
+  starCircleInactive: {
+    borderColor: '#e0e0e0',
+    backgroundColor: '#f5f5f5',
   },
   barWrapper: {
     flex: 1,
