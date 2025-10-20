@@ -1,4 +1,4 @@
-package com.stepstracker
+package com.stepstracker.app
 
 import android.app.Application
 import android.content.res.Configuration
