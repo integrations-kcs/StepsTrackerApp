@@ -13,7 +13,15 @@
     },
     "android": {
       "package": "com.stepstracker.app",
-      "versionCode": 1
+      "versionCode": 1,
+      "permissions": [
+        "ACTIVITY_RECOGNITION",
+        "android.permission.ACTIVITY_RECOGNITION"
+      ],
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/icon.png",
+        "backgroundColor": "#ffffff"
+      }
     },
     "web": {
       "bundler": "metro",

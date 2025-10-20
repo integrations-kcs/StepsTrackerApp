@@ -11,4 +11,28 @@
 -keep class com.swmansion.reanimated.** { *; }
 -keep class com.facebook.react.turbomodule.** { *; }
 
+# Hermes
+-keep class com.facebook.hermes.unicode.** { *; }
+-keep class com.facebook.jni.** { *; }
+
+# React Native New Architecture
+-keep class com.facebook.react.fabric.** { *; }
+-keep class com.facebook.react.uimanager.** { *; }
+-keep class com.facebook.react.bridge.** { *; }
+
+# Expo modules
+-keep class expo.modules.** { *; }
+-keepclassmembers class * {
+  @expo.modules.core.interfaces.ExpoProp *;
+}
+
+# Supabase / OkHttp / Network
+-keep class okhttp3.** { *; }
+-keep class okio.** { *; }
+-dontwarn okhttp3.**
+-dontwarn okio.**
+
+# Pedometer / Sensors
+-keep class expo.modules.sensors.** { *; }
+
 # Add any project specific keep options here:

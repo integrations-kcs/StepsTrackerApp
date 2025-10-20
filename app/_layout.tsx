@@ -1,11 +1,41 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Component, ErrorInfo, ReactNode } from 'react';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { View, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, ActivityIndicator, StyleSheet, Text } from 'react-native';
 import { useFrameworkReady } from '@/hooks/useFrameworkReady';
 import { getDeviceId, checkUserRegistration } from '@/lib/auth';
 
-export default function RootLayout() {
+class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean; error?: Error }> {
+  constructor(props: { children: ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    console.error('App Error:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorTitle}>App Error</Text>
+          <Text style={styles.errorText}>
+            {this.state.error?.message || 'An unexpected error occurred'}
+          </Text>
+        </View>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
+function RootLayoutInner() {
   useFrameworkReady();
   const [isLoading, setIsLoading] = useState(true);
   const [isRegistered, setIsRegistered] = useState(false);
@@ -67,11 +97,37 @@ export default function RootLayout() {
   );
 }
 
+export default function RootLayout() {
+  return (
+    <ErrorBoundary>
+      <RootLayoutInner />
+    </ErrorBoundary>
+  );
+}
+
 const styles = StyleSheet.create({
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#f5f5f5',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f5f5f5',
+    padding: 20,
+  },
+  errorTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#dc2626',
+    marginBottom: 12,
+  },
+  errorText: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
   },
 });
