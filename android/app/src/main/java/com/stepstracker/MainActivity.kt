@@ -1,4 +1,4 @@
-package com.helloworld
+package com.stepstracker
 
 import android.os.Build
 import android.os.Bundle
