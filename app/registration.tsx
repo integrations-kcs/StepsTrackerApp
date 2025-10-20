@@ -72,7 +72,10 @@ export default function RegistrationScreen() {
       } else if (Platform.OS === 'android') {
         return `Android ${Device.osVersion || Platform.Version || 'Unknown'}`;
       } else {
-        return `Web ${navigator.userAgent.split(' ').pop() || 'Browser'}`;
+        if (typeof navigator !== 'undefined' && navigator.userAgent) {
+          return `Web ${navigator.userAgent.split(' ').pop() || 'Browser'}`;
+        }
+        return 'Web Browser';
       }
     } catch (error) {
       return 'Unknown OS';
