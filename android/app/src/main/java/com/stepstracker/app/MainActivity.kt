@@ -20,7 +20,9 @@ class MainActivity : ReactActivity() {
     // @generated begin expo-splashscreen - expo prebuild (DO NOT MODIFY) sync-f3ff59a738c56c9a6119210cb55f0b613eb8b6af
     SplashScreenManager.registerOnActivity(this)
     // @generated end expo-splashscreen
-    super.onCreate(null)
+    // CRITICAL: Must pass savedInstanceState (not null) to prevent Android crash
+    // Bug fix: https://developer.android.com/reference/android/app/Activity#onCreate(android.os.Bundle)
+    super.onCreate(savedInstanceState)  // DO NOT CHANGE TO null
   }
 
   /**
